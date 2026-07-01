@@ -6,19 +6,16 @@ from PyQt6.QtGui import QPainter, QColor, QRadialGradient, QPen, QPolygonF
 class MotismaMecha(QWidget):
     def __init__(self):
         super().__init__()
-        # --- CONFIGURATION ---
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setFixedSize(160, 160)
 
-        # --- POSITION ET PHYSIQUE ---
         screen = QApplication.primaryScreen().geometry()
         self.sw, self.sh = screen.width(), screen.height()
         self.x, self.y = float(self.sw/2), float(self.sh/2)
         self.vx, self.vy = 0.0, 0.0
         self.friction = 0.94
         
-        # --- ÉTATS (ORANGE PAR DÉFAUT) ---
         self.status = "listening" 
         self.pulse = 0.0
         self.eye_blink = 0
@@ -26,7 +23,6 @@ class MotismaMecha(QWidget):
         self.is_panicking = False
         self.last_m_pos = self.cursor().pos()
 
-        # Timers
         self.timer = QTimer()
         self.timer.timeout.connect(self.engine)
         self.timer.start(16)
@@ -35,7 +31,7 @@ class MotismaMecha(QWidget):
         self.dir_timer.timeout.connect(self.change_direction)
         self.dir_timer.start(5000)
 
-        # Forcer le statut orange au lancement
+
         with open("status.txt", "w") as f: f.write("listening")
 
     def change_direction(self):
@@ -43,7 +39,7 @@ class MotismaMecha(QWidget):
             self.current_angle = random.uniform(0, 6.28)
 
     def engine(self):
-        # 1. LECTURE ÉTAT
+
         try:
             if os.path.exists("status.txt"):
                 with open("status.txt", "r") as f: 
@@ -52,7 +48,6 @@ class MotismaMecha(QWidget):
                 self.status = "listening"
         except: pass
 
-        # 2. MOUVEMENT (Auto Lent + Esquive Rapide)
         m_pos = self.cursor().pos()
         dx, dy = (self.x + 80) - m_pos.x(), (self.y + 80) - m_pos.y()
         dist = math.sqrt(dx**2 + dy**2)
@@ -64,7 +59,6 @@ class MotismaMecha(QWidget):
             self.is_panicking = (m_speed > 12)
         else:
             self.is_panicking = False
-            # Vitesse auto réduite (0.04)
             self.vx += math.cos(self.current_angle) * 0.04
             self.vy += math.sin(self.current_angle) * 0.04
 
@@ -72,14 +66,12 @@ class MotismaMecha(QWidget):
         self.vx *= self.friction ; self.vy *= self.friction
         self.x += self.vx ; self.y += self.vy
 
-        # Rebond écran
         if self.x < 0 or self.x > self.sw-160: self.vx *= -1.5 ; self.change_direction()
         if self.y < 0 or self.y > self.sh-160: self.vy *= -1.5 ; self.change_direction()
 
         self.x = max(0, min(self.x, self.sw-160))
         self.y = max(0, min(self.y, self.sh-160))
         
-        # Animations Yeux
         self.pulse += 0.15
         if self.eye_blink > 0: self.eye_blink -= 1
         elif random.random() < 0.01: self.eye_blink = 12
@@ -92,7 +84,6 @@ class MotismaMecha(QWidget):
         painter.setPen(Qt.PenStyle.NoPen)
         eye_h = 12 if self.eye_blink == 0 else 2
         
-        # Regard vers la souris (Mignon/Interactif)
         m_pos = self.cursor().pos()
         lx = max(-5, min(5, (m_pos.x() - self.x - 80) / 20))
         ly = max(-5, min(5, (m_pos.y() - self.y - 80) / 20))
@@ -105,7 +96,6 @@ class MotismaMecha(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         center = 80
         
-        # COULEURS PAR ETAT
         colors = {
             "listening": QColor(255, 140, 0), 
             "thinking": QColor(0, 180, 255), 
@@ -118,20 +108,19 @@ class MotismaMecha(QWidget):
         painter.setPen(QPen(c, 2))
         painter.setBrush(QColor(c.red(), c.green(), c.blue(), 40))
 
-        # --- DESSIN DES FORMES (FEATURES ANCIENNES) ---
-        if self.status == "speaking": # VENTILO (Vert)
+        if self.status == "speaking": 
             for i in range(3):
                 a = self.pulse * 5 + i * 2.09
                 p = QPointF(center + math.cos(a)*55, center + math.sin(a)*55)
                 painter.drawLine(QPointF(center, center), p)
                 painter.drawEllipse(p, 10, 10)
-        elif self.status == "thinking": # CUBE (Bleu)
+        elif self.status == "thinking": 
             s = 45 + math.sin(self.pulse*2)*5
             painter.drawRect(QRectF(center-s/2, center-s/2, s, s))
             for i in range(4):
                 a = self.pulse + i * 1.57
                 painter.drawEllipse(QPointF(center + math.cos(a)*28, center + math.sin(a)*28), 4, 4)
-        else: # NORMAL (Orange + Antennes)
+        else: 
             painter.drawEllipse(QPointF(center, center), 35, 35)
             for i in [-1, 1]:
                 a = -1.57 + (i * 0.8) + math.sin(self.pulse)*0.2
@@ -139,7 +128,6 @@ class MotismaMecha(QWidget):
                 painter.drawLine(QPointF(center + math.cos(a)*35, center + math.sin(a)*35), p2)
                 painter.drawEllipse(p2, 3, 3)
 
-        # NOYAU & VISAGE
         grad = QRadialGradient(center, center, 25)
         grad.setColorAt(0, c)
         grad.setColorAt(1, QColor(c.red(), c.green(), c.blue(), 100))
